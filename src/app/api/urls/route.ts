@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import pool, { initDb } from '@/lib/db'
+
+let dbInitialized = false
 
 export async function GET() {
-  const supabase = createServiceClient()
-
-  const { data, error } = await supabase
-    .from('urls')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to fetch URLs' }, { status: 500 })
+  if (!dbInitialized) {
+    await initDb()
+    dbInitialized = true
   }
 
-  return NextResponse.json(data)
+  try {
+    const result = await pool.query('SELECT * FROM urls ORDER BY created_at DESC')
+    return NextResponse.json(result.rows)
+  } catch (error) {
+    console.error('Failed to fetch URLs:', error)
+    return NextResponse.json({ error: 'Failed to fetch URLs' }, { status: 500 })
+  }
 }
